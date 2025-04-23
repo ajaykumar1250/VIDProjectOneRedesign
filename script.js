@@ -14,7 +14,10 @@ d3.csv("national_health_data_2024.csv").then(function(data) {
             cnty_fips: d.cnty_fips.padStart(5, "0"),
             display_name: d.display_name || "Unknown"
         };
-        attributes.forEach(attr => formattedData[attr] = +d[attr] || 0);
+        attributes.forEach(attr => {
+            let val = +d[attr];
+            formattedData[attr] = val === -1 ? null : val;
+        });
         return formattedData;
     });
 
@@ -117,10 +120,28 @@ d3.csv("national_health_data_2024.csv").then(function(data) {
             .attr("height", height + margin.top + margin.bottom)
             .append("g")
             .attr("transform", `translate(${margin.left}, ${margin.top})`);
+            
 
-        let scatterData = data.filter(d => (selectedCounties.size === 0 || selectedCounties.has(d.cnty_fips)) && d[attr1] !== -1 && d[attr2] !== -1);
-        let xScale = d3.scaleLinear().domain(d3.extent(data, d => d[attr1])).range([0, width]);
-        let yScale = d3.scaleLinear().domain(d3.extent(data, d => d[attr2])).range([height, 0]);
+            let scatterData = data.filter(d =>
+                (selectedCounties.size === 0 || selectedCounties.has(d.cnty_fips)) &&
+                d[attr1] != null &&
+                d[attr2] != null
+            );
+            
+        let xExtent = d3.extent(data, d => d[attr1]);
+        let yExtent = d3.extent(data, d => d[attr2]);
+
+        let xPadding = (xExtent[1] - xExtent[0]) * 0.05;  // 5% padding
+        let yPadding = (yExtent[1] - yExtent[0]) * 0.05;
+
+        let xScale = d3.scaleLinear()
+            .domain([xExtent[0] - xPadding, xExtent[1] + xPadding])
+            .range([0, width]);
+
+        let yScale = d3.scaleLinear()
+            .domain([yExtent[0] - yPadding, yExtent[1] + yPadding])
+            .range([height, 0]);
+
         let scatterColor = histogramColors[currentHistogramAttribute] || "steelblue";
 
         let scatterTooltip = d3.select("body").append("div")
@@ -179,9 +200,14 @@ d3.csv("national_health_data_2024.csv").then(function(data) {
             const projection = d3.geoAlbersUsa().translate([350, 225]).scale(800);
             const path = d3.geoPath().projection(projection);
 
-            let mapColor = histogramColors[currentHistogramAttribute] || "steelblue";
-            let filteredData = data.filter(d => selectedCounties.size === 0 || selectedCounties.has(d.cnty_fips));
-            const colorScale = d3.scaleSequential().domain(d3.extent(data, d => d[currentMapAttribute])).interpolator(d3.interpolateRgb("#ffffff", mapColor));
+            let mapColor = histogramColors[currentMapAttribute] || "steelblue";
+
+            // ✅ Exclude nulls from color scale domain
+            let validData = data.filter(d => d[currentMapAttribute] != null);
+            const colorDomain = d3.extent(validData, d => d[currentMapAttribute]);
+            const colorScale = d3.scaleSequential()
+                .domain(colorDomain)
+                .interpolator(d3.interpolateRgb("#ffffff", mapColor));
 
             let mapTooltip = d3.select("body").append("div")
                 .attr("class", "tooltip")
@@ -200,24 +226,37 @@ d3.csv("national_health_data_2024.csv").then(function(data) {
                 .style("font-weight", "bold")
                 .text(attributeLabels[currentMapAttribute]);
 
-            mapSvg.selectAll("path")
-                .data(topojson.feature(us, us.objects.counties).features)
+                let allCounties = topojson.feature(us, us.objects.counties).features;
+                let visibleCounties = allCounties; // Show all counties, always
+                
+                mapSvg.selectAll("path")
+                    .data(visibleCounties)
                 .join("path")
                 .attr("d", path)
                 .attr("fill", d => {
-                    const county = filteredData.find(c => c.cnty_fips === d.id);
-                    return county ? colorScale(county[currentMapAttribute]) : "#ddd";
+                    const county = data.find(c => c.cnty_fips === d.id);
+                    
+                    // County not found or no data for this attribute
+                    if (!county || county[currentMapAttribute] == null) return "#ddd"; // Missing data (gray)
+                
+                    // If brushing is active and this county is NOT selected
+                    if (selectedCounties.size > 0 && !selectedCounties.has(d.id)) return "#eee"; // Dim
+                
+                    // Default case: selected or no brushing
+                    return colorScale(county[currentMapAttribute]);
                 })
-                .attr("stroke", "#fff").attr("stroke-width", 0.5)
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 0.5)
                 .on("mouseover", function(event, d) {
                     if (!tooltipEnabled) return;
-                    let county = filteredData.find(c => c.cnty_fips === d.id);
+                    let county = data.find(c => c.cnty_fips === d.id);
                     if (county) {
                         d3.select(this).attr("fill", "#ff7f0e").attr("stroke-width", 2);
                         mapTooltip.style("visibility", "visible")
-                        .html(`<strong>${county.display_name}</strong><br>
-                               <strong>${attributeLabels[currentMapAttribute]}:</strong> ${county[currentMapAttribute]?.toFixed(1)}`)
-                    
+                            .html(`<strong>${county.display_name}</strong><br>
+                                   <strong>${attributeLabels[currentMapAttribute]}:</strong> ${
+                                       county[currentMapAttribute] != null ? county[currentMapAttribute].toFixed(1) : "N/A"
+                                   }`)
                             .style("left", (event.pageX + 10) + "px")
                             .style("top", (event.pageY - 10) + "px");
                     }
@@ -229,9 +268,12 @@ d3.csv("national_health_data_2024.csv").then(function(data) {
                 })
                 .on("mouseout", function(event, d) {
                     if (!tooltipEnabled) return;
-                    let county = filteredData.find(c => c.cnty_fips === d.id);
+                    let county = data.find(c => c.cnty_fips === d.id);
                     if (county) {
-                        d3.select(this).attr("fill", colorScale(county[currentMapAttribute])).attr("stroke-width", 0.5);
+                        d3.select(this)
+                            .attr("fill", county[currentMapAttribute] != null
+                                ? colorScale(county[currentMapAttribute]) : "#ddd")
+                            .attr("stroke-width", 0.5);
                         mapTooltip.style("visibility", "hidden");
                     }
                 });
@@ -255,7 +297,7 @@ d3.csv("national_health_data_2024.csv").then(function(data) {
                         }));
             }
 
-            updateLegend(colorScale, d3.extent(data, d => d[currentMapAttribute]));
+            updateLegend(colorScale, colorDomain);
         });
     }
 
@@ -311,10 +353,51 @@ d3.csv("national_health_data_2024.csv").then(function(data) {
             .attr("stroke", "#ccc")
             .attr("stroke-width", 1);
 
-        legendSvg.append("text").attr("x", 0).attr("y", 35).attr("font-size", "12px").text(domain[0].toFixed(1));
-        legendSvg.append("text").attr("x", legendWidth).attr("y", 35).attr("text-anchor", "end").attr("font-size", "12px").text(domain[1].toFixed(1));
-        legendSvg.append("text").attr("x", legendWidth / 2).attr("y", -5).attr("text-anchor", "middle").attr("font-size", "14px").attr("font-weight", "bold").text("Color Legend");
+        // ✅ Replace -1.0 label with "N/A" if needed
+        legendSvg.append("text").attr("x", 0).attr("y", 35).attr("font-size", "12px")
+            .text(domain[0] != null ? domain[0].toFixed(1) : "N/A");
+        legendSvg.append("text").attr("x", legendWidth).attr("y", 35).attr("text-anchor", "end").attr("font-size", "12px")
+            .text(domain[1] != null ? domain[1].toFixed(1) : "N/A");
+
+        legendSvg.append("text").attr("x", legendWidth / 2).attr("y", -5).attr("text-anchor", "middle")
+            .attr("font-size", "14px").attr("font-weight", "bold").text("Color Legend");
     }
+
+    function updateAllVisualizations() {
+        createHistogram();
+        createScatterplot();
+        updateCMap();
+    }
+
+    d3.select("#histogram-selector").on("change", function () {
+        currentHistogramAttribute = this.value;
+        currentMapAttribute = this.value;
+        attr1 = this.value;
+        updateAllVisualizations();
+    });
+
+    d3.select("#scatterplot-y-selector").on("change", function () {
+        attr2 = this.value;
+        createScatterplot();
+    });
+
+    d3.select("#reset-button").on("click", function () {
+        location.reload();
+    });
+
+    d3.select("#brush-toggle").on("change", function () {
+        brushEnabled = this.checked;
+        updateCMap();
+    });
+
+    d3.select("#tooltip-toggle").on("change", function () {
+        tooltipEnabled = this.checked;
+        updateCMap();
+    });
 
     updateAllVisualizations();
 }).catch(error => console.error("Error loading data:", error));
+
+
+    
+
