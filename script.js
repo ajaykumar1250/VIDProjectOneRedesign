@@ -6,7 +6,7 @@ d3.csv("national_health_data_2024.csv").then(function(data) {
     let currentMapAttribute = "poverty_perc";
     let selectedCounties = new Set();
 
-    let brushEnabled = true;
+    let brushEnabled = false;
     let tooltipEnabled = true;
 
     data = data.map(d => {
