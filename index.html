@@ -13,7 +13,7 @@
     <h2>By: Ajay Kumar Kodaikal</h2>
     <h2>Libraries used: D3, TopoJSON, JavaScript ; Dataset: national_health_data_2024.csv</h2>
     
-    <!-- Dropdown for selecting the attribute for all visualizations -->
+    <!-- Dropdowns -->
     <label for="histogram-selector">Select Attribute for the Visualizations:</label>
     <select id="histogram-selector">
         <option value="poverty_perc">Poverty Percentage</option>
@@ -23,7 +23,7 @@
         <option value="percent_stroke">Stroke Percent</option>
         <option value="percent_coronary_heart_disease">Heart Disease Percent</option>
     </select>
-    <!-- Dropdown for selecting the Y-axis of the scatterplot -->
+
     <label for="scatterplot-y-selector">Select Y-Axis for Scatterplot:</label>
     <select id="scatterplot-y-selector">
         <option value="median_household_income">Median Household Income</option>
@@ -33,24 +33,23 @@
         <option value="percent_stroke">Stroke Percent</option>
         <option value="percent_coronary_heart_disease">Heart Disease Percent</option>
     </select>
-    <!-- Main chart container -->
-    <div class="chart-container">
-        <!-- Histogram and scatterplot -->
-        <div id="histogram"></div>
-        <div id="scatterplot"></div>
-    </div>
 
     <button id="reset-button">Reset</button>
+    <label><input type="checkbox" id="brush-toggle"> Enable Brush Selection</label>
+    <label><input type="checkbox" id="tooltip-toggle" checked> Enable Tooltips</label>
 
-    <label><input type="checkbox" id="brush-toggle" > Enable Brush Selection</label>
+    <!-- All charts in one row -->
+    <div class="chart-container">
+        <div id="histogram"></div>
+        <div id="scatterplot"></div>
+        <div id="choropleth-map-wrapper">
+            <svg id="choropleth-map"></svg>
+            <div id="map-legend-container">
+                <div id="map-legend"></div>
+            </div>
+        </div>
+    </div>
 
-    <!-- Choropleth map container -->
-    <div id="choropleth-map-container">
-        <svg id="choropleth-map"></svg>
-    </div>
-    <div id="map-legend-container">
-        <svg id="map-legend"></svg>
-    </div>
     <script src="script.js"></script>
 </body>
 </html>
