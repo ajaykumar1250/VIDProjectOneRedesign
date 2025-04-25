@@ -21,7 +21,7 @@ d3.csv("national_health_data_2024.csv").then(function(data) {
         return formattedData;
     });
 
-    let width = 500, height = 350, margin = {top: 30, right: 30, bottom: 50, left: 70};
+    let width = 500, height = 350, margin = {top: 30, right: 30, bottom: 70, left: 70};
 
     let attributeLabels = {
         "poverty_perc": "Poverty Percentage (%)",
@@ -101,7 +101,7 @@ d3.csv("national_health_data_2024.csv").then(function(data) {
 
         svg.append("text")
             .attr("x", width / 2)
-            .attr("y", height + 40)
+            .attr("y", height + 50)  
             .attr("text-anchor", "middle")
             .text(attributeLabels[currentHistogramAttribute]);
 
@@ -184,7 +184,10 @@ d3.csv("national_health_data_2024.csv").then(function(data) {
         svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(xScale));
         svg.append("g").call(d3.axisLeft(yScale));
 
-        svg.append("text").attr("x", width / 2).attr("y", height + 40).attr("text-anchor", "middle").text(attributeLabels[attr1]);
+        svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", height + 55)
+        .attr("text-anchor", "middle").text(attributeLabels[attr1]);
         svg.append("text").attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", -50).attr("text-anchor", "middle").attr("id", "scatterplot-y-label").text(attributeLabels[attr2]);
     }
 
