@@ -36,7 +36,7 @@ d3.csv("national_health_data_2024.csv").then(function(data) {
         "poverty_perc": "#1f77b4",
         "median_household_income": "#5aae61",
         "elderly_percentage": "#807dba",
-        "percent_no_heath_insurance": "#9467bd",
+        "percent_no_heath_insurance": "#7f7c75",
         "percent_stroke": "rgb(231, 155, 132)",
         "percent_coronary_heart_disease": "#bf812d"
     };
